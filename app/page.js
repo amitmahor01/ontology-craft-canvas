@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   addEdge,
   useNodesState,
@@ -67,11 +67,50 @@ export default function OntologyCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedEdge, setSelectedEdge] = useState(null);
+  const [validationStatus, setValidationStatus] = useState('valid');
+  const [isGridVisible, setIsGridVisible] = useState(true);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
+  // Enhanced connection validation
+  const isValidConnection = useCallback((connection) => {
+    // Prevent self-connections
+    if (connection.source === connection.target) {
+      return false;
+    }
+
+    // Get source and target nodes
+    const sourceNode = nodes.find(node => node.id === connection.source);
+    const targetNode = nodes.find(node => node.id === connection.target);
+
+    if (!sourceNode || !targetNode) {
+      return false;
+    }
+
+    // Define valid connection rules
+    const validConnections = {
+      class: ['instance', 'property'], // Class can connect to instance or property
+      instance: ['class', 'property'], // Instance can connect to class or property
+      property: ['instance', 'class'], // Property can connect to instance or class
+    };
+
+    const sourceType = sourceNode.type;
+    const targetType = targetNode.type;
+
+    // Check if the connection is valid
+    return validConnections[sourceType]?.includes(targetType) || false;
+  }, [nodes]);
+
   const onConnect = useCallback(
     (params) => {
+      // Validate the connection
+      if (!isValidConnection(params)) {
+        console.warn('Invalid connection attempted:', params);
+        return;
+      }
+
       const newEdge = {
         ...params,
         id: generateId(),
@@ -79,10 +118,19 @@ export default function OntologyCanvas() {
         type: 'custom',
         animated: false,
       };
+      
       setEdges((eds) => addEdge(newEdge, eds));
     },
-    [setEdges]
+    [setEdges, isValidConnection]
   );
+
+  const onConnectStart = useCallback((event, params) => {
+    console.log('Connection start:', params);
+  }, []);
+
+  const onConnectEnd = useCallback((event) => {
+    console.log('Connection end:', event);
+  }, []);
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
@@ -93,11 +141,17 @@ export default function OntologyCanvas() {
     (event) => {
       event.preventDefault();
 
+      if (!reactFlowInstance) {
+        console.warn('ReactFlow instance not ready');
+        return;
+      }
+
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const type = event.dataTransfer.getData('application/reactflow');
       const label = event.dataTransfer.getData('application/label');
 
       if (typeof type === 'undefined' || !type) {
+        console.warn('No type data in drop event');
         return;
       }
 
@@ -147,7 +201,6 @@ export default function OntologyCanvas() {
   }, [selectedNode, selectedEdge, setNodes, setEdges]);
 
   const exportToTurtle = useCallback(() => {
-    // Convert nodes and edges to RDF triples
     const triples = [];
     
     nodes.forEach(node => {
@@ -203,6 +256,93 @@ ${triples.join('\n')}`;
     }
   }, [selectedNode, selectedEdge, setNodes, setEdges]);
 
+  // Toolbar functions
+  const onUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      const previousState = history[newIndex];
+      setNodes(previousState.nodes);
+      setEdges(previousState.edges);
+    }
+  }, [historyIndex, history, setNodes, setEdges]);
+
+  const onRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      const nextState = history[newIndex];
+      setNodes(nextState.nodes);
+      setEdges(nextState.edges);
+    }
+  }, [historyIndex, history, setNodes, setEdges]);
+
+  const onSave = useCallback(() => {
+    const currentState = { nodes, edges };
+    const dataStr = JSON.stringify(currentState);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'ontology-canvas.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [nodes, edges]);
+
+  const onImport = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const importedState = JSON.parse(event.target.result);
+            setNodes(importedState.nodes || []);
+            setEdges(importedState.edges || []);
+          } catch (error) {
+            console.error('Error importing file:', error);
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  }, [setNodes, setEdges]);
+
+  const onZoomIn = useCallback(() => {
+    if (reactFlowInstance) {
+      reactFlowInstance.zoomIn();
+    }
+  }, [reactFlowInstance]);
+
+  const onZoomOut = useCallback(() => {
+    if (reactFlowInstance) {
+      reactFlowInstance.zoomOut();
+    }
+  }, [reactFlowInstance]);
+
+  const onFitView = useCallback(() => {
+    if (reactFlowInstance) {
+      reactFlowInstance.fitView();
+    }
+  }, [reactFlowInstance]);
+
+  const onToggleGrid = useCallback(() => {
+    setIsGridVisible(!isGridVisible);
+  }, [isGridVisible]);
+
+  // Update history when nodes or edges change
+  useEffect(() => {
+    const currentState = { nodes, edges };
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(currentState);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [nodes, edges]);
+
   return (
     <div className="h-screen w-screen flex">
       <Sidebar />
@@ -213,6 +353,18 @@ ${triples.join('\n')}`;
           onDeleteNode={deleteSelectedElement}
           onExport={exportToTurtle}
           onLabelChange={onLabelChange}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onSave={onSave}
+          onImport={onImport}
+          onZoomIn={onZoomIn}
+          onZoomOut={onZoomOut}
+          onFitView={onFitView}
+          onToggleGrid={onToggleGrid}
+          validationStatus={validationStatus}
+          canUndo={historyIndex > 0}
+          canRedo={historyIndex < history.length - 1}
+          isGridVisible={isGridVisible}
         />
         <div className="flex-1" ref={reactFlowWrapper}>
           <ReactFlow
@@ -221,6 +373,8 @@ ${triples.join('\n')}`;
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
             onInit={setReactFlowInstance}
             onDrop={onDrop}
             onDragOver={onDragOver}
@@ -230,6 +384,9 @@ ${triples.join('\n')}`;
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             fitView
+            connectionMode="loose"
+            snapToGrid={true}
+            snapGrid={[15, 15]}
           >
             <Controls />
             <Background />

@@ -18,26 +18,31 @@ export default function ClassNode({ data, selected }) {
           <div className="text-blue-900 font-semibold text-lg">{data.label || 'Class'}</div>
         </div>
       </div>
-      {/* Handles absolutely positioned at the midpoints of each edge */}
+      
+      {/* Connection handles - using React Flow's built-in positioning */}
       <Handle 
         type="target" 
         position={Position.Top} 
-        className="!absolute left-1/2 -translate-x-1/2 -top-2 w-3 h-3 bg-blue-400 border-2 border-white z-20"
+        className="w-3 h-3 bg-blue-400 border-2 border-white"
+        style={{ zIndex: 1000 }}
       />
       <Handle 
         type="source" 
         position={Position.Bottom} 
-        className="!absolute left-1/2 -translate-x-1/2 -bottom-2 w-3 h-3 bg-blue-400 border-2 border-white z-20"
+        className="w-3 h-3 bg-blue-400 border-2 border-white"
+        style={{ zIndex: 1000 }}
       />
       <Handle 
         type="target" 
         position={Position.Left} 
-        className="!absolute top-1/2 -translate-y-1/2 -left-2 w-3 h-3 bg-blue-400 border-2 border-white z-20"
+        className="w-3 h-3 bg-blue-400 border-2 border-white"
+        style={{ zIndex: 1000 }}
       />
       <Handle 
         type="source" 
         position={Position.Right} 
-        className="!absolute top-1/2 -translate-y-1/2 -right-2 w-3 h-3 bg-blue-400 border-2 border-white z-20"
+        className="w-3 h-3 bg-blue-400 border-2 border-white"
+        style={{ zIndex: 1000 }}
       />
     </div>
   );
