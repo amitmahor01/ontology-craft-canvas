@@ -1,103 +1,247 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useCallback, useRef } from 'react';
+import ReactFlow, {
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  Controls,
+  Background,
+  MiniMap,
+  Panel,
+  getBezierPath,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+
+import ClassNode from './components/ClassNode';
+import InstanceNode from './components/InstanceNode';
+import PropertyNode from './components/PropertyNode';
+import Sidebar from './components/Sidebar';
+import Toolbar from './components/Toolbar';
+import { generateId } from './utils/idGenerator';
+
+const nodeTypes = {
+  class: ClassNode,
+  instance: InstanceNode,
+  property: PropertyNode,
+};
+
+// Custom edge component to display labels
+const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, data }) => {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+  });
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <path
+        id={id}
+        className="react-flow__edge-path"
+        d={edgePath}
+        stroke="#555"
+        strokeWidth={2}
+      />
+      <text>
+        <textPath
+          href={`#${id}`}
+          style={{ fontSize: '12px' }}
+          startOffset="50%"
+          textAnchor="middle"
+        >
+          {data?.label || 'hasRelation'}
+        </textPath>
+      </text>
+    </>
+  );
+};
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+const edgeTypes = {
+  custom: CustomEdge,
+};
+
+export default function OntologyCanvas() {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedEdge, setSelectedEdge] = useState(null);
+  const reactFlowWrapper = useRef(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState(null);
+
+  const onConnect = useCallback(
+    (params) => {
+      const newEdge = {
+        ...params,
+        id: generateId(),
+        data: { label: 'hasRelation' },
+        type: 'custom',
+        animated: false,
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    },
+    [setEdges]
+  );
+
+  const onDragOver = useCallback((event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const type = event.dataTransfer.getData('application/reactflow');
+      const label = event.dataTransfer.getData('application/label');
+
+      if (typeof type === 'undefined' || !type) {
+        return;
+      }
+
+      const position = reactFlowInstance.project({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
+
+      const newNode = {
+        id: generateId(),
+        type,
+        position,
+        data: { label, type },
+      };
+
+      setNodes((nds) => nds.concat(newNode));
+    },
+    [reactFlowInstance, setNodes]
+  );
+
+  const onNodeClick = useCallback((event, node) => {
+    setSelectedNode(node);
+    setSelectedEdge(null);
+  }, []);
+
+  const onEdgeClick = useCallback((event, edge) => {
+    setSelectedEdge(edge);
+    setSelectedNode(null);
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null);
+    setSelectedEdge(null);
+  }, []);
+
+  const deleteSelectedElement = useCallback(() => {
+    if (selectedNode) {
+      setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
+      setEdges((eds) => eds.filter((edge) => 
+        edge.source !== selectedNode.id && edge.target !== selectedNode.id
+      ));
+      setSelectedNode(null);
+    } else if (selectedEdge) {
+      setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdge.id));
+      setSelectedEdge(null);
+    }
+  }, [selectedNode, selectedEdge, setNodes, setEdges]);
+
+  const exportToTurtle = useCallback(() => {
+    // Convert nodes and edges to RDF triples
+    const triples = [];
+    
+    nodes.forEach(node => {
+      if (node.type === 'class') {
+        triples.push(`<${node.data.iri || '#' + node.data.label}> a owl:Class .`);
+      } else if (node.type === 'instance') {
+        triples.push(`<${node.data.iri || '#' + node.data.label}> a <${node.data.classType || 'owl:Thing'}> .`);
+      } else if (node.type === 'property') {
+        triples.push(`<${node.data.iri || '#' + node.data.label}> a owl:ObjectProperty .`);
+      }
+    });
+
+    edges.forEach(edge => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+      
+      if (sourceNode && targetNode) {
+        triples.push(`<${sourceNode.data.iri || '#' + sourceNode.data.label}> <${edge.data?.iri || '#' + edge.data?.label || 'rdf:type'}> <${targetNode.data.iri || '#' + targetNode.data.label}> .`);
+      }
+    });
+
+    const turtleContent = `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+${triples.join('\n')}`;
+
+    const blob = new Blob([turtleContent], { type: 'text/turtle' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ontology.ttl';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [nodes, edges]);
+
+  const onLabelChange = useCallback((newLabel) => {
+    if (selectedNode) {
+      setNodes((nds) => nds.map((node) =>
+        node.id === selectedNode.id
+          ? { ...node, data: { ...node.data, label: newLabel } }
+          : node
+      ));
+      setSelectedNode((node) => node ? { ...node, data: { ...node.data, label: newLabel } } : node);
+    } else if (selectedEdge) {
+      setEdges((eds) => eds.map((edge) =>
+        edge.id === selectedEdge.id
+          ? { ...edge, data: { ...edge.data, label: newLabel } }
+          : edge
+      ));
+      setSelectedEdge((edge) => edge ? { ...edge, data: { ...edge.data, label: newLabel } } : edge);
+    }
+  }, [selectedNode, selectedEdge, setNodes, setEdges]);
+
+  return (
+    <div className="h-screen w-screen flex">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <Toolbar 
+          selectedNode={selectedNode}
+          selectedEdge={selectedEdge}
+          onDeleteNode={deleteSelectedElement}
+          onExport={exportToTurtle}
+          onLabelChange={onLabelChange}
+        />
+        <div className="flex-1" ref={reactFlowWrapper}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onInit={setReactFlowInstance}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onNodeClick={onNodeClick}
+            onEdgeClick={onEdgeClick}
+            onPaneClick={onPaneClick}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            fitView
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <Controls />
+            <Background />
+            <MiniMap />
+            <Panel position="top-right" className="bg-white p-2 rounded shadow">
+              <div className="text-sm text-gray-600">
+                Nodes: {nodes.length} | Edges: {edges.length}
+              </div>
+            </Panel>
+          </ReactFlow>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
