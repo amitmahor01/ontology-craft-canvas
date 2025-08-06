@@ -1,46 +1,6 @@
 'use client';
 
 
-function TypeIcon({ type }) {
-  if (type === 'class') {
-    return (
-      <div className="w-7 h-7 flex items-center justify-center">
-        <div className="bg-blue-50 border-2 border-blue-400 rounded-lg w-6 h-6" />
-      </div>
-    );
-  }
-  if (type === 'instance') {
-    return (
-      <div className="w-7 h-7 flex items-center justify-center">
-        <div className="bg-green-50 border-2 border-green-400 rounded-full w-6 h-6" />
-      </div>
-    );
-  }
-  if (type === 'property') {
-    return (
-      <div className="w-7 h-7 flex items-center justify-center">
-        <div
-          className="bg-yellow-50 border-2 border-yellow-400 w-6 h-6"
-          style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }}
-        />
-      </div>
-    );
-  }
-  if (type === 'edge') {
-    return (
-      <svg width="28" height="28" viewBox="0 0 28 28" className="mx-1">
-        <line x1="6" y1="22" x2="22" y2="6" stroke="#555" strokeWidth="2.5" markerEnd="url(#arrow)" />
-        <defs>
-          <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
-            <path d="M0,0 L0,6 L6,3 z" fill="#555" />
-          </marker>
-        </defs>
-      </svg>
-    );
-  }
-  return null;
-}
-
 function ValidationStatus({ status }) {
   const statusConfig = {
     valid: { color: 'bg-green-500', icon: '✓', text: 'Valid' },
@@ -63,7 +23,11 @@ export default function Toolbar({
   selectedNode, 
   selectedEdge, 
   onDeleteNode, 
-  onExport, 
+  onExportTurtle, 
+  onExportOWL,
+  onExportRDF,
+  onExportJSONLD,
+  onImport,
   onLabelChange,
   onUndo,
   onRedo,
@@ -75,7 +39,8 @@ export default function Toolbar({
   validationStatus = 'valid',
   canUndo = false,
   canRedo = false,
-  isGridVisible = true
+  isGridVisible = true,
+  isConnecting = false
 }) {
   const selectedElement = selectedNode || selectedEdge;
   let elementType = null;
@@ -118,7 +83,6 @@ export default function Toolbar({
         {/* Center Section - Element Editor */}
         {selectedElement && (
           <div className="flex items-center gap-3">
-            <TypeIcon type={elementType} />
             <div className="flex items-center gap-2">
               <input
                 className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -143,6 +107,14 @@ export default function Toolbar({
 
         {/* Right Section - Actions & Controls */}
         <div className="flex items-center gap-3">
+          {/* Connection Status */}
+          {isConnecting && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-orange-100 text-orange-700 rounded-lg border border-orange-200">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Connecting...</span>
+            </div>
+          )}
+
           {/* Validation Status */}
           <ValidationStatus status={validationStatus} />
 
@@ -182,12 +154,57 @@ export default function Toolbar({
           {/* Import/Export */}
           <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
             <button
-              className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm font-medium"
-              onClick={onExport}
-              title="Export to Turtle"
+              className="px-3 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-sm font-medium"
+              onClick={onImport}
+              title="Import Ontology"
             >
-              Export
+              Import
             </button>
+            <div className="relative group">
+              <button
+                className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm font-medium flex items-center gap-1"
+                title="Export Ontology"
+              >
+                Export
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="py-1">
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                    onClick={onExportTurtle}
+                  >
+                    <span className="text-xs font-mono">.ttl</span>
+                    Turtle
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                    onClick={onExportOWL}
+                  >
+                    <span className="text-xs font-mono">.owl</span>
+                    OWL/XML
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                    onClick={onExportRDF}
+                  >
+                    <span className="text-xs font-mono">.rdf</span>
+                    RDF/XML
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                    onClick={onExportJSONLD}
+                  >
+                    <span className="text-xs font-mono">.jsonld</span>
+                    JSON-LD
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* View Controls */}

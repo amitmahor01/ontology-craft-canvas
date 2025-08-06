@@ -10,6 +10,7 @@ import ReactFlow, {
   MiniMap,
   Panel,
   getBezierPath,
+  MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -19,6 +20,13 @@ import PropertyNode from './components/PropertyNode';
 import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
 import { generateId } from './utils/idGenerator';
+import { 
+  exportToTurtleFile, 
+  exportToOWLFile, 
+  exportToRDFFile, 
+  exportToJSONLDFile,
+  importFromJSONLD
+} from './utils/exportUtils';
 
 const nodeTypes = {
   class: ClassNode,
@@ -26,8 +34,8 @@ const nodeTypes = {
   property: PropertyNode,
 };
 
-// Custom edge component to display labels
-const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, data }) => {
+// Enhanced custom edge component with better label handling
+const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, data, selected }) => {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -41,19 +49,24 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, data }) => {
         id={id}
         className="react-flow__edge-path"
         d={edgePath}
-        stroke="#555"
-        strokeWidth={2}
+        stroke={selected ? "#2563eb" : "#555"}
+        strokeWidth={selected ? 3 : 2}
+        markerEnd={MarkerType.ArrowClosed}
       />
-      <text>
-        <textPath
-          href={`#${id}`}
-          style={{ fontSize: '12px' }}
-          startOffset="50%"
-          textAnchor="middle"
-        >
-          {data?.label || 'hasRelation'}
-        </textPath>
-      </text>
+      <foreignObject
+        width={120}
+        height={40}
+        x={labelX - 60}
+        y={labelY - 20}
+        className="edge-label-foreignobject"
+        requiredExtensions="http://www.w3.org/1999/xhtml"
+      >
+        <div className="flex items-center justify-center h-full">
+          <div className="bg-white px-2 py-1 rounded border text-xs font-medium text-gray-700 shadow-sm">
+            {data?.label || 'Relation'}
+          </div>
+        </div>
+      </foreignObject>
     </>
   );
 };
@@ -71,10 +84,11 @@ export default function OntologyCanvas() {
   const [isGridVisible, setIsGridVisible] = useState(true);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isConnecting, setIsConnecting] = useState(false);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
-  // Enhanced connection validation
+  // Improved connection validation - more flexible for ontology relationships
   const isValidConnection = useCallback((connection) => {
     // Prevent self-connections
     if (connection.source === connection.target) {
@@ -89,19 +103,29 @@ export default function OntologyCanvas() {
       return false;
     }
 
-    // Define valid connection rules
-    const validConnections = {
-      class: ['instance', 'property'], // Class can connect to instance or property
-      instance: ['class', 'property'], // Instance can connect to class or property
-      property: ['instance', 'class'], // Property can connect to instance or class
-    };
+    // Check for existing connections between these nodes
+    const existingConnection = edges.find(edge => 
+      (edge.source === connection.source && edge.target === connection.target) ||
+      (edge.source === connection.target && edge.target === connection.source)
+    );
 
+    if (existingConnection) {
+      return false;
+    }
+
+    // More flexible connection rules for ontology relationships
     const sourceType = sourceNode.type;
     const targetType = targetNode.type;
 
-    // Check if the connection is valid
+    // Allow all valid ontology relationships
+    const validConnections = {
+      class: ['class', 'instance', 'property'], // Class can connect to class (subclass), instance, or property
+      instance: ['class', 'instance', 'property'], // Instance can connect to class, instance, or property
+      property: ['class', 'instance', 'property'], // Property can connect to class, instance, or property
+    };
+
     return validConnections[sourceType]?.includes(targetType) || false;
-  }, [nodes]);
+  }, [nodes, edges]);
 
   const onConnect = useCallback(
     (params) => {
@@ -111,24 +135,43 @@ export default function OntologyCanvas() {
         return;
       }
 
+      const sourceNode = nodes.find(node => node.id === params.source);
+      const targetNode = nodes.find(node => node.id === params.target);
+
+      // Generate appropriate default label based on node types
+      let defaultLabel = 'hasRelation';
+      if (sourceNode.type === 'class' && targetNode.type === 'class') {
+        defaultLabel = 'subClassOf';
+      } else if (sourceNode.type === 'instance' && targetNode.type === 'class') {
+        defaultLabel = 'instanceOf';
+      } else if (sourceNode.type === 'property' && targetNode.type === 'class') {
+        defaultLabel = 'domain';
+      } else if (sourceNode.type === 'class' && targetNode.type === 'property') {
+        defaultLabel = 'range';
+      }
+
       const newEdge = {
         ...params,
         id: generateId(),
-        data: { label: 'hasRelation' },
+        data: { label: defaultLabel },
         type: 'custom',
         animated: false,
+        style: { stroke: '#555', strokeWidth: 2 },
       };
       
       setEdges((eds) => addEdge(newEdge, eds));
+      setIsConnecting(false);
     },
-    [setEdges, isValidConnection]
+    [setEdges, isValidConnection, nodes]
   );
 
   const onConnectStart = useCallback((event, params) => {
+    setIsConnecting(true);
     console.log('Connection start:', params);
   }, []);
 
   const onConnectEnd = useCallback((event) => {
+    setIsConnecting(false);
     console.log('Connection end:', event);
   }, []);
 
@@ -164,7 +207,7 @@ export default function OntologyCanvas() {
         id: generateId(),
         type,
         position,
-        data: { label, type },
+        data: { label: label || type.charAt(0).toUpperCase() + type.slice(1) },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -201,41 +244,19 @@ export default function OntologyCanvas() {
   }, [selectedNode, selectedEdge, setNodes, setEdges]);
 
   const exportToTurtle = useCallback(() => {
-    const triples = [];
-    
-    nodes.forEach(node => {
-      if (node.type === 'class') {
-        triples.push(`<${node.data.iri || '#' + node.data.label}> a owl:Class .`);
-      } else if (node.type === 'instance') {
-        triples.push(`<${node.data.iri || '#' + node.data.label}> a <${node.data.classType || 'owl:Thing'}> .`);
-      } else if (node.type === 'property') {
-        triples.push(`<${node.data.iri || '#' + node.data.label}> a owl:ObjectProperty .`);
-      }
-    });
+    exportToTurtleFile(nodes, edges);
+  }, [nodes, edges]);
 
-    edges.forEach(edge => {
-      const sourceNode = nodes.find(n => n.id === edge.source);
-      const targetNode = nodes.find(n => n.id === edge.target);
-      
-      if (sourceNode && targetNode) {
-        triples.push(`<${sourceNode.data.iri || '#' + sourceNode.data.label}> <${edge.data?.iri || '#' + edge.data?.label || 'rdf:type'}> <${targetNode.data.iri || '#' + targetNode.data.label}> .`);
-      }
-    });
+  const exportToOWL = useCallback(() => {
+    exportToOWLFile(nodes, edges);
+  }, [nodes, edges]);
 
-    const turtleContent = `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+  const exportToRDF = useCallback(() => {
+    exportToRDFFile(nodes, edges);
+  }, [nodes, edges]);
 
-${triples.join('\n')}`;
-
-    const blob = new Blob([turtleContent], { type: 'text/turtle' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ontology.ttl';
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportToJSONLD = useCallback(() => {
+    exportToJSONLDFile(nodes, edges);
   }, [nodes, edges]);
 
   const onLabelChange = useCallback((newLabel) => {
@@ -292,18 +313,31 @@ ${triples.join('\n')}`;
   const onImport = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.json,.jsonld,.ttl,.owl,.rdf';
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
           try {
-            const importedState = JSON.parse(event.target.result);
-            setNodes(importedState.nodes || []);
-            setEdges(importedState.edges || []);
+            const content = event.target.result;
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (fileExtension === 'jsonld') {
+              const importedData = importFromJSONLD(content);
+              setNodes(importedData.nodes || []);
+              setEdges(importedData.edges || []);
+            } else if (fileExtension === 'json') {
+              const importedState = JSON.parse(content);
+              setNodes(importedState.nodes || []);
+              setEdges(importedState.edges || []);
+            } else {
+              console.warn('Import format not yet supported:', fileExtension);
+              alert('Import format not yet supported. Please use JSON-LD or JSON format.');
+            }
           } catch (error) {
             console.error('Error importing file:', error);
+            alert('Error importing file. Please check the file format.');
           }
         };
         reader.readAsText(file);
@@ -344,19 +378,22 @@ ${triples.join('\n')}`;
   }, [nodes, edges]);
 
   return (
-    <div className="h-screen w-screen flex">
+    <div className="h-screen w-screen flex bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Toolbar 
           selectedNode={selectedNode}
           selectedEdge={selectedEdge}
           onDeleteNode={deleteSelectedElement}
-          onExport={exportToTurtle}
+          onExportTurtle={exportToTurtle}
+          onExportOWL={exportToOWL}
+          onExportRDF={exportToRDF}
+          onExportJSONLD={exportToJSONLD}
+          onImport={onImport}
           onLabelChange={onLabelChange}
           onUndo={onUndo}
           onRedo={onRedo}
           onSave={onSave}
-          onImport={onImport}
           onZoomIn={onZoomIn}
           onZoomOut={onZoomOut}
           onFitView={onFitView}
@@ -365,8 +402,9 @@ ${triples.join('\n')}`;
           canUndo={historyIndex > 0}
           canRedo={historyIndex < history.length - 1}
           isGridVisible={isGridVisible}
+          isConnecting={isConnecting}
         />
-        <div className="flex-1" ref={reactFlowWrapper}>
+        <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -385,15 +423,35 @@ ${triples.join('\n')}`;
             edgeTypes={edgeTypes}
             fitView
             connectionMode="loose"
-            snapToGrid={true}
-            snapGrid={[15, 15]}
+            snapToGrid={isGridVisible}
+            snapGrid={[20, 20]}
+            deleteKeyCode="Delete"
+            multiSelectionKeyCode="Shift"
+            panOnDrag={true}
+            zoomOnScroll={true}
+            zoomOnPinch={true}
+            panOnScroll={false}
+            preventScrolling={true}
+            className="bg-white"
           >
             <Controls />
-            <Background />
-            <MiniMap />
-            <Panel position="top-right" className="bg-white p-2 rounded shadow">
-              <div className="text-sm text-gray-600">
-                Nodes: {nodes.length} | Edges: {edges.length}
+            <Background 
+              color="#f3f4f6" 
+              gap={isGridVisible ? 20 : 0}
+              size={1}
+            />
+            <MiniMap 
+              style={{ backgroundColor: '#f8fafc' }}
+              nodeColor="#3b82f6"
+              maskColor="rgba(0, 0, 0, 0.1)"
+            />
+            <Panel position="top-right" className="bg-white p-3 rounded-lg shadow-md border">
+              <div className="text-sm text-gray-600 space-y-1">
+                <div>Nodes: <span className="font-semibold text-blue-600">{nodes.length}</span></div>
+                <div>Edges: <span className="font-semibold text-green-600">{edges.length}</span></div>
+                {isConnecting && (
+                  <div className="text-orange-600 font-medium">Connecting...</div>
+                )}
               </div>
             </Panel>
           </ReactFlow>
