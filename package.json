@@ -1,7 +1,25 @@
 {
   "name": "ontology-craft-canvas",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "A modern, interactive ontology editor React component with drag-and-drop, export/import, and validation features.",
+  "author": "Amit Mahor <amit.mahor121@outlook.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amitmahor01/ontology-craft-canvas.git"
+  },
+  "main": "index.js",
+  "keywords": [
+    "ontology",
+    "editor",
+    "react",
+    "reactflow",
+    "semantic-web",
+    "owl",
+    "rdf",
+    "turtle",
+    "json-ld"
+  ],
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
