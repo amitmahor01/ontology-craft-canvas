@@ -4,6 +4,8 @@ A modern, interactive ontology editor built with React and React Flow.
 Create, edit, and manage ontologies with an intuitive drag-and-drop interface.
 
 ---
+<img width="1913" height="724" alt="image" src="https://github.com/user-attachments/assets/7319d806-e35b-42e2-ac31-8aa14db37765" />
+
 
 ## Features
 
