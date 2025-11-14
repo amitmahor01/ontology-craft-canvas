@@ -8,7 +8,12 @@
     "type": "git",
     "url": "https://github.com/amitmahor01/ontology-craft-canvas.git"
   },
-  "main": "index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "ontology",
     "editor",
@@ -18,28 +23,26 @@
     "owl",
     "rdf",
     "turtle",
-    "json-ld"
+    "json-ld",
+    "visual-editor",
+    "knowledge-graph"
   ],
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "tsup",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18.x",
+    "react-dom": ">=18.x",
+    "reactflow": ">=11.0.0"
   },
   "dependencies": {
     "@reactflow/node-resizer": "^2.2.14",
     "n3": "^1.26.0",
-    "next": "15.4.5",
-    "rdflib": "^2.2.37",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "reactflow": "^11.11.4"
+    "rdflib": "^2.2.37"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "15.4.5",
-    "tailwindcss": "^4"
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   }
 }

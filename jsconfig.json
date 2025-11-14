@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
+    "jsx": "react-jsx",
+    "checkJs": false,
+    "allowJs": true,
     "paths": {
       "@/*": ["./*"]
     }
-  }
+  },
+  "include": ["src", "tsup.config.js"]
 }

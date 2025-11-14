@@ -1,0 +1,257 @@
+/* Container */
+.toolbar-container {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.breadcrumb-separator {
+    color: #9ca3af;
+}
+
+.breadcrumb-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.breadcrumb-label:hover {
+    background: #f3f4f6;
+}
+
+/* Element Editor */
+.element-editor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.element-input {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+}
+
+.element-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.delete-btn {
+    padding: 6px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background: #dc2626;
+}
+
+/* Right Section */
+.right-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Connecting */
+.connecting {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffedd5;
+    border: 1px solid #fed7aa;
+    padding: 4px 12px;
+    border-radius: 6px;
+    color: #c2410c;
+}
+
+.connecting-dot {
+    width: 8px;
+    height: 8px;
+    background: #fb923c;
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+}
+
+/* Validation Status */
+.validation-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 4px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+}
+
+.status-indicator.green {
+    background: #22c55e;
+}
+
+.status-indicator.yellow {
+    background: #eab308;
+}
+
+.status-indicator.red {
+    background: #ef4444;
+}
+
+.status-indicator.blue {
+    background: #3b82f6;
+}
+
+.status-text {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: .4;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Action Buttons */
+.action-group,
+.zoom-controls {
+    display: flex;
+    gap: 6px;
+}
+
+.icon-btn {
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 14px;
+}
+
+.icon-btn:hover:not(:disabled) {
+    background: #f3f4f6;
+}
+
+.icon-btn:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
+/* Import & Export */
+.import-btn {
+    background: #22c55e;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+}
+
+.import-btn:hover {
+    background: #16a34a;
+}
+
+.export-dropdown {
+    position: relative;
+}
+
+.export-btn {
+    background: #3b82f6;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+}
+
+.export-btn:hover {
+    background: #2563eb;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 36px;
+    right: 0;
+    width: 180px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: none;
+    flex-direction: column;
+}
+
+.export-dropdown:hover .dropdown-menu {
+    display: flex;
+}
+
+.dropdown-menu button {
+    padding: 8px 12px;
+    font-size: 14px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-menu button:hover {
+    background: #f3f4f6;
+}
+
+/* Grid toggle active */
+.grid-active {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.divider {
+    width: 1px;
+    height: 24px;
+    background: #e5e7eb;
+}

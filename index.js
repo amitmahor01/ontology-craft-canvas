@@ -1,11 +1,11 @@
-import OntologyEditor from './app/components/OntologyEditor';
+import OntologyEditor from './src/OntologyEditor';
 import {
   exportToTurtle,
   exportToOWL,
   exportToRDF,
   exportToJSONLD,
   importFromJSONLD,
-} from './app/utils/exportUtils';
+} from './src/utils/exportUtils';
 
 export {
   OntologyEditor,

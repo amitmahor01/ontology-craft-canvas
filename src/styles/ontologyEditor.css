@@ -1,0 +1,69 @@
+/* ----------- Layout Containers ----------- */
+.editor-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    background: #f9fafb;
+    /* gray-50 */
+}
+
+.editor-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ----------- Panel Counter (top-right) ----------- */
+.editor-stats-panel {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.editor-stats-panel .count-blue {
+    font-weight: 600;
+    color: #2563eb;
+}
+
+.editor-stats-panel .count-green {
+    font-weight: 600;
+    color: #16a34a;
+}
+
+.editor-stats-panel .connecting {
+    color: #ea580c;
+    font-weight: 500;
+}
+
+/* ----------- Edge Label ----------- */
+.edge-label-wrapper {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+}
+
+.edge-label-box {
+    background: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* ----------- Flow Background ----------- */
+.rf-background-light {
+    background-color: white;
+}
+
+/* Utility */
+.hidden {
+    display: none;
+}
