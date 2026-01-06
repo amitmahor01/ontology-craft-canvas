@@ -9,14 +9,14 @@ Create, edit, and manage ontologies with an intuitive drag-and-drop interface.
 
 ## Features
 
-- 🎯 **Drag & Drop Interface** – Easily create ontology elements
-- 🔗 **Smart Connections** – Connect classes, instances, and properties
-- 📝 **Real-time Editing** – Edit labels and relationships on the fly
-- 💾 **Multiple Export Formats** – Export to Turtle, OWL/XML, RDF/XML, and JSON-LD
-- 📥 **Import Support** – Import existing ontologies (JSON, JSON-LD)
-- 🎨 **Modern UI** – Clean, responsive design with Tailwind CSS
-- 🔄 **Undo/Redo** – Full history management
-- 📊 **Validation** – Real-time ontology validation
+-  **Drag & Drop Interface** – Easily create ontology elements
+-  **Smart Connections** – Connect classes, instances, and properties
+-  **Real-time Editing** – Edit labels and relationships on the fly
+-  **Multiple Export Formats** – Export to Turtle, OWL/XML, RDF/XML, and JSON-LD
+-  **Import Support** – Import existing ontologies (JSON, JSON-LD)
+-  **Modern UI** – Clean, responsive design with Tailwind CSS
+-  **Undo/Redo** – Full history management
+-  **Validation** – Real-time ontology validation
 
 ---
 
